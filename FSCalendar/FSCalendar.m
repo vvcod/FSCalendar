@@ -21,7 +21,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-static inline void FSCalendarAssertDateInBounds(NSDate *date, NSCalendar *calendar, NSDate *minimumDate, NSDate *maximumDate) {
+static inline bool FSCalendarAssertDateInBounds(NSDate *date, NSCalendar *calendar, NSDate *minimumDate, NSDate *maximumDate) {
     BOOL valid = YES;
     NSInteger minOffset = [calendar components:NSCalendarUnitDay fromDate:minimumDate toDate:date options:0].day;
     valid &= minOffset >= 0;
@@ -29,11 +29,12 @@ static inline void FSCalendarAssertDateInBounds(NSDate *date, NSCalendar *calend
         NSInteger maxOffset = [calendar components:NSCalendarUnitDay fromDate:maximumDate toDate:date options:0].day;
         valid &= maxOffset <= 0;
     }
-    if (!valid) {
-        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-        formatter.dateFormat = @"yyyy/MM/dd";
-        [NSException raise:@"FSCalendar date out of bounds exception" format:@"Target date %@ beyond bounds [%@ - %@]", [formatter stringFromDate:date], [formatter stringFromDate:minimumDate], [formatter stringFromDate:maximumDate]];
-    }
+    return valid;
+//    if (!valid) {
+//        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+//        formatter.dateFormat = @"yyyy/MM/dd";
+//        [NSException raise:@"FSCalendar date out of bounds exception" format:@"Target date %@ beyond bounds [%@ - %@]", [formatter stringFromDate:date], [formatter stringFromDate:minimumDate], [formatter stringFromDate:maximumDate]];
+//    }
 }
 
 NS_ASSUME_NONNULL_END
@@ -705,8 +706,10 @@ typedef NS_ENUM(NSUInteger, FSCalendarOrientation) {
     if (!today) {
         _today = nil;
     } else {
-        FSCalendarAssertDateInBounds(today,self.gregorian,self.minimumDate,self.maximumDate);
-        [self updateToday];
+        bool ok =  FSCalendarAssertDateInBounds(today,self.gregorian,self.minimumDate,self.maximumDate);
+        if (ok) {
+            [self updateToday];
+        }
     }
     if (self.hasValidateVisibleLayout) {
         [self.visibleCells makeObjectsPerformSelector:@selector(setDateIsToday:) withObject:nil];
@@ -1063,7 +1066,8 @@ typedef NS_ENUM(NSUInteger, FSCalendarOrientation) {
         
     [self requestBoundingDatesIfNecessary];
     
-    FSCalendarAssertDateInBounds(date,self.gregorian,self.minimumDate,self.maximumDate);
+    bool ok =  FSCalendarAssertDateInBounds(date,self.gregorian,self.minimumDate,self.maximumDate);
+    if (!ok) return;
     
     NSDate *targetDate = [self.gregorian startOfDayForDate:date];
     NSIndexPath *targetIndexPath = [self.calculator indexPathForDate:targetDate];
